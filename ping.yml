@@ -1,0 +1,12 @@
+- hosts: all
+  gather_facts: no
+  tasks:
+    - name: Test system connection
+      wait_for_connection:
+        timeout: 20
+    # - name: Gather Windows Facts
+    #   debug: var=hostvars[inventory_hostname]
+    # - name: Check Windows ReleaseID
+    #   win_shell: Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name ReleaseID | Select-Object ReleaseID
+    #   register: out
+    # - debug: var=out.stdout_lines

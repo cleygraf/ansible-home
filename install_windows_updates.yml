@@ -1,0 +1,71 @@
+---
+- hosts: all
+  gather_facts: no
+  serial: 1
+  tasks:
+    - name: Install missing updates
+      win_updates:
+        category_names:
+          [
+            "SecurityUpdates",
+            "CriticalUpdates",
+            "UpdateRollups",
+            "Updates",
+            "DefinitionUpdates",
+          ]
+        reboot: true
+        reboot_timeout: 3600
+      ignore_errors: yes
+      register: win_updates_result
+      #failed_when: win_updates_result.msg != "A reboot is required before more updates can be installed."
+      failed_when: win_updates_result.failed is defined and win_updates_result.failed and win_updates_result.reboot_required == False
+
+      # while: win_updates_result.found_update_count|int >= 1
+    - debug: var=win_updates_result
+
+    - block:
+        # Attempting some error handling.
+        - name: "Reboot Windows to re-try update installation."
+          win_reboot:
+            shutdown_timeout_sec: 3600
+            reboot_timeout_sec: 3600
+          # when: win_updates_result.msg is defined and win_updates_result.msg == "A reboot is required before more updates can be installed"
+          when: win_updates_result.failed
+
+          # Let it fail this time if reboot didn't work.
+        - name: "Install Windows updates again."
+          win_updates:
+            category_names:
+              [
+                "SecurityUpdates",
+                "CriticalUpdates",
+                "UpdateRollups",
+                "Updates",
+                "DefinitionUpdates",
+              ]
+            reboot: true
+            reboot_timeout: 3600
+          register: win_updates_result
+          # when: win_updates_result.msg is defined and win_updates_result.msg == "A reboot is required before more updates can be installed"
+          # when: win_updates_reboot and win_updates_result.failed is defined and win_updates_result.failed
+          when: win_updates_result.failed
+
+    - name: check if the Windows Update process is busy
+      win_shell: (New-Object -ComObject Microsoft.Update.Session).CreateUpdateInstaller().IsBusy
+      become: yes
+      become_user: SYSTEM
+      become_method: runas
+      ignore_errors: yes
+
+    - name: "Wait for host to come back"
+      wait_for_connection:
+    #   register: result
+    # # output results
+    # - debug: var=result
+    # # reboot only if required
+    # - win_reboot:
+    #   when: result.reboot_required
+    # # # - name: Install windows updates with help of Get-WindowsUpdate
+    # # #   win_shell: Get-WUInstall -AcceptAll -AutoReboot
+    # # #   register: out
+    # # # - debug: var=out.stdout_lines

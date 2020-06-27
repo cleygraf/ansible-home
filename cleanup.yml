@@ -1,0 +1,81 @@
+# - hosts: all
+#   gather_facts: no
+#   tasks:
+#   - name: Remove all Appx packages for all user
+#     win_shell: |
+#       Get-AppxPackage -AllUsers | Remove-AppxPackage
+#   - name: Remove all Appx provisioned packages
+#     win_shell: |
+#       Get-AppxProvisionedPackage -Online | Remove-AppxProvisionedPackage -Online
+- hosts: all
+  gather_facts: no
+  tasks:
+    - name: Remove preinstalled apps
+      win_shell: |
+        $Changed = $false
+        $Apps=Get-ProvisionedAppPackage -Online | Where-Object { $_.DisplayName -like "{{ item }}" }
+        if ($Apps.Count -eq 0) {
+          Write-Host "No package found named '{{ item }}'"
+          exit 0
+        }
+
+        ForEach ($App in $Apps) {
+          Write-Host "DEBUG: $App"
+          Try {
+            Remove-AppxProvisionedPackage -Online -PackageName $App.PackageName | Out-Null
+            Remove-AppxPackage -Package $App.PackageName | Out-Null
+            $Changed = $true
+            Write-Host "Successfully uninstalled app '{{ item }}'"
+          } Catch {
+            Write-Host "Error uninstalling app '{{ item }}'"
+            exit 2
+          }
+        }
+        if ($Changed) {
+          exit 1
+        }
+        exit 0
+      with_items:
+        - 4DF9E0F8.Netflix
+        - 9E2F88E3.Twitter
+        - "*CandyCrush*"
+        - "*Farm Hero*"
+        - E046963F.LenovoCompanion
+        - Microsoft.3DBuilder
+        - Microsoft.Appconnector
+        - Microsoft.BingFinance
+        - Microsoft.BingNews
+        - Microsoft.BingSports
+        - Microsoft.BingWeather
+        - Microsoft.ConnectivityStore
+        - Microsoft.Getstarted
+        - Microsoft.Messaging
+        - Microsoft.MicrosoftOfficeHub
+        - Microsoft.MicrosoftSolitaireCollection
+        - Microsoft.MSPaint
+        - Microsoft.Office.OneNote
+        - Microsoft.Office.Sway
+        - Microsoft.OneConnect
+        - Microsoft.People
+        - Microsoft.SkypeApp
+        - Microsoft.WindowsAlarms
+        - Microsoft.WindowsCamera
+        - Microsoft.windowscommunicationsapps
+        - Microsoft.WindowsDVDPlayer
+        - Microsoft.WindowsFeedbackHub
+        - Microsoft.WindowsMaps
+        - Microsoft.WindowsPhone
+        - Microsoft.Windows.Photos
+        - Microsoft.XboxApp
+        - Microsoft.XboxGameOverlay
+        - Microsoft.XboxGamingOverlay
+        - Microsoft.XboxIdentityProvider
+        - Microsoft.XboxSpeechToTextOverlay
+        - Microsoft.Xbox.TCUI
+        - Microsoft.ZuneMusic
+        - Microsoft.ZuneVideo
+        - TuneIn.TuneInRadio
+        - Microsoft.Advertising.Xaml
+      register: appx
+      changed_when: "'Deployment operation progress: ' in appx.stderr"
+  #    failed_when: no

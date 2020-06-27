@@ -1,0 +1,22 @@
+- hosts: all
+  gather_facts: no
+  tasks:
+    - name: Create directory C:\Temp\ansible
+      win_file:
+        path: C:\Temp\ansible
+        state: directory
+
+    - name: Set DNS search suffix
+      win_shell:
+        if ( (Get-DnsClientGlobalSetting).SuffixSearchList -ne  @("home.local")) {
+        Set-DnsClientGlobalSetting -SuffixSearchList @("home.local")
+        Write-Host "Successfully changed DNS suffix"
+        exit 0
+        }
+        else
+        {
+        exit 0
+        }
+      register: dnssuffixout
+      ignore_errors: yes
+      changed_when: "'Successfully changed' in dnssuffixout.stdout"
